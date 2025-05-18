@@ -56,8 +56,6 @@ app.post("/token", async (c) => {
 	}
 });
 
-app.get("/grahak-connect", async (c) => {});
-
 app.route("/db", dbRouter);
 
 serve(
