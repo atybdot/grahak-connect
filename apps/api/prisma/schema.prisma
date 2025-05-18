@@ -1,0 +1,58 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id           String  @id @default(uuid())
+  firstName    String
+  email        String  @unique
+  password     String
+  orders       Order[]
+  issuesRaised Issue[]
+}
+
+model Order {
+  id             String         @id @default(uuid())
+  title          String
+  placed         DateTime       @default(now())
+  deliveryStatus DeliveryStatus
+  price          Int
+  currency       Currency
+  userId         String
+  user           User           @relation(fields: [userId], references: [id])
+}
+
+model Issue {
+  id          String      @id @default(uuid())
+  title       String
+  description String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @default(now())
+  status      IssueStatus
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+}
+
+enum IssueStatus {
+  RESOLVED
+  HOLD
+  TOHUMAN
+}
+
+enum Currency {
+  INR
+  US
+}
+
+enum DeliveryStatus {
+  SUCCESSFUL
+  CANCEL
+  TRANSIT
+}
