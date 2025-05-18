@@ -38,15 +38,15 @@ app.get("/get-orders", async (c) => {
 	return c.json(rj);
 });
 app.on("GET", ["/food", "/e-com"], async (c) => {
-	// const prompt = c.req.query("q") ?? "";
-	// if (!prompt || prompt === "") {
-	// 	return c.json({ message: "prompt query is required", status: 402 });
-	// }
-	const envoirment = c.req.path === "food" ? foodComp : eComm;
+	const authToken = c.req.header("X-Authorization");
 
-	const result = await generateText({
+	const envoirment = c.req.path === "food" ? foodComp : eComm;
+	const { messages } = await c.req.json();
+
+	const result = streamText({
 		model: Gemni("gemini-2.5-flash-preview-04-17"),
-		system: `
+		system:
+			`
   	You are a customer support agent for a large organization, which provides services or products to users through its digital platforms (such as a website or mobile app).
     here are more details about the company:
     ${envoirment}
@@ -67,32 +67,36 @@ app.on("GET", ["/food", "/e-com"], async (c) => {
   	Additionally, always respond to the user in the same language in which the query was asked, or in the user's native language, if identifiable.
     User may ask you to place order on their behalf or they may  ask you to cancel order on their behalf.
     Do not call same tools multiple times.
+	${authToken !== "" || !(authToken.length > 0) ? `auth token for the current user is ${authToken}` : ""}
     `,
-		prompt:
-			"hi there my email is Rajan_Sinha@yahoo.co.in and my password is Sp1Do,can you fetch my info?",
+		messages,
 		tools: {
 			generateAuthToken,
 			getUserInfo,
 			getOrderList,
-			// getSpecificOrder,
-			// placeOrder,
-			// cancelOrder,
+			getSpecificOrder,
+			placeOrder,
+			cancelOrder,
 		},
 		maxSteps: 5,
 	});
-
-	return c.json(result.text);
+	c.header("X-Vercel-AI-Data-Stream", "v1");
+	c.header("Content-Type", "text/plain; charset=utf-8");
+	return stream(c, (stream) => stream.pipe(result.toDataStream()));
 });
 
 app.post("/ai", async (c) => {
 	const { messages } = await c.req.json();
 
-	const streamRes = await generateText({
+	const result = streamText({
 		model: Gemni("gemini-1.5-flash"),
 		system: "respond with whatever user asked in a hilarious fashion",
 		messages,
 	});
-	return c.json(streamRes);
+	c.header("X-Vercel-AI-Data-Stream", "v1");
+	c.header("Content-Type", "text/plain; charset=utf-8");
+
+	return stream(c, (stream) => stream.pipe(result.toDataStream()));
 });
 
 serve(
