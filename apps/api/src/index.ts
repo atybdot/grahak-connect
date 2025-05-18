@@ -16,7 +16,7 @@ app.use(logger());
 app.use(
 	"/*",
 	cors({
-		origin: process.env.CORS_ORIGIN || "",
+		origin: "*",
 		allowMethods: ["GET", "POST", "OPTIONS"],
 	}),
 );
@@ -27,10 +27,8 @@ app.get("/", (c) => {
 
 app.post("/token", async (c) => {
 	const body: Pick<User, "email" | "password"> = await c.req.json();
-	console.log(body);
-
 	if (body.email === "" || body.password === "") {
-		return c.json({ message: "missing inputs", status: 402 });
+		return c.json({ message: "missing inputs", status: 402 }, { status: 402 });
 	}
 	try {
 		const user = await prisma.user.findUniqueOrThrow({
@@ -43,16 +41,23 @@ app.post("/token", async (c) => {
 			{ id: user.id, name: user.firstName },
 			env.JWT_SEC,
 		);
-		return c.json({
-			"auth-token": token,
-			message: "Please store it in some where safe",
-		});
+		return c.json(
+			{
+				"auth-token": token,
+				message:
+					"this is auth token extract it and attach it to X-Authorization header to perform any CRUD operation\nPlease store it in some where safe",
+			},
+			{ status: 200 },
+		);
 	} catch (error) {
-		return c.json({
-			message: "unable to find user\nprovide proper details",
-			status: 402,
-			error,
-		});
+		return c.json(
+			{
+				message: "unable to find user\nprovide proper details",
+				status: 402,
+				error,
+			},
+			{ status: 402 },
+		);
 	}
 });
 
@@ -64,6 +69,6 @@ serve(
 		port: 3000,
 	},
 	(info) => {
-		console.log(`Server is running on http://localhost:${info.port}`);
+		console.log(`api is running on http://localhost:${info.port}`);
 	},
 );
